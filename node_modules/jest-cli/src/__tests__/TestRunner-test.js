@@ -7,9 +7,7 @@
  */
 'use strict';
 
-require('jest-runtime')
-  .autoMockOff()
-  .mock('fs');
+jest.autoMockOff().mock('fs');
 
 var q = require('q');
 
@@ -32,28 +30,28 @@ describe('TestRunner', function() {
       }));
     });
 
-    pit('supports ../ paths and unix separators', function() {
+    it('supports ../ paths and unix separators', function() {
       var path = '/path/to/__tests__/foo/bar/baz/../../../test.js';
       var isTestFile = runner._isTestFilePath(path);
 
       return expect(isTestFile).toEqual(true);
     });
 
-    pit('supports ../ paths and windows separators', function() {
+    it('supports ../ paths and windows separators', function() {
       var path = 'c:\\path\\to\\__tests__\\foo\\bar\\baz\\..\\..\\..\\test.js';
       var isTestFile = runner._isTestFilePath(path);
 
       return expect(isTestFile).toEqual(true);
     });
 
-    pit('supports unix separators', function() {
+    it('supports unix separators', function() {
       var path = '/path/to/__tests__/test.js';
       var isTestFile = runner._isTestFilePath(path);
 
       return expect(isTestFile).toEqual(true);
     });
 
-    pit('supports windows separators', function() {
+    it('supports windows separators', function() {
       var path = 'c:\\path\\to\\__tests__\\test.js';
       var isTestFile = runner._isTestFilePath(path);
 
@@ -61,14 +59,33 @@ describe('TestRunner', function() {
     });
   });
 
-  describe('findTestsRelatedTo', function() {
+  describe('streamTestPathsRelatedTo', function() {
     var fakeDepsFromPath;
     var fs;
     var runner;
     var utils;
 
+    function pathStreamToPromise(pathStream) {
+      var deferred = q.defer();
+
+      var paths = [];
+      pathStream.on('data', function(pathStr) {
+        paths.push(pathStr);
+      });
+
+      pathStream.on('error', function(err) {
+        deferred.reject(err);
+      });
+
+      pathStream.on('end', function() {
+        deferred.resolve(paths);
+      });
+
+      return deferred.promise;
+    }
+
     beforeEach(function() {
-      fs = require('fs');
+      fs = require('graceful-fs');
       utils = require('../lib/utils');
       runner = new TestRunner(utils.normalizeConfig({
         rootDir: '.',
@@ -92,9 +109,10 @@ describe('TestRunner', function() {
       // Mock out existsSync to return true, since our test path isn't real
       fs.existsSync = function() { return true; };
 
-      return runner.findTestsRelatedTo([path]).then(function(relatedTests) {
-        expect(relatedTests).toEqual([]);
-      });
+      return pathStreamToPromise(runner.streamTestPathsRelatedTo([path]))
+        .then(function(relatedTests) {
+          expect(relatedTests).toEqual([]);
+        });
     });
 
     pit('finds tests that depend directly on the path', function() {
@@ -105,9 +123,10 @@ describe('TestRunner', function() {
       // Mock out existsSync to return true, since our test path isn't real
       fs.existsSync = function() { return true; };
 
-      return runner.findTestsRelatedTo([path]).then(function(relatedTests) {
-        expect(relatedTests).toEqual([dependentTestPath]);
-      });
+      return pathStreamToPromise(runner.streamTestPathsRelatedTo([path]))
+        .then(function(relatedTests) {
+          expect(relatedTests).toEqual([dependentTestPath]);
+        });
     });
 
     pit('finds tests that depend indirectly on the path', function() {
@@ -120,9 +139,10 @@ describe('TestRunner', function() {
       // Mock out existsSync to return true, since our test path isn't real
       fs.existsSync = function() { return true; };
 
-      return runner.findTestsRelatedTo([path]).then(function(relatedTests) {
-        expect(relatedTests).toEqual([dependentTestPath]);
-      });
+      return pathStreamToPromise(runner.streamTestPathsRelatedTo([path]))
+        .then(function(relatedTests) {
+          expect(relatedTests).toEqual([dependentTestPath]);
+        });
     });
 
     pit('finds multiple tests that depend indirectly on the path', function() {
@@ -138,9 +158,13 @@ describe('TestRunner', function() {
       // Mock out existsSync to return true, since our test path isn't real
       fs.existsSync = function() { return true; };
 
-      return runner.findTestsRelatedTo([path]).then(function(relatedTests) {
-        expect(relatedTests).toEqual([dependentTestPath1, dependentTestPath2]);
-      });
+      return pathStreamToPromise(runner.streamTestPathsRelatedTo([path]))
+        .then(function(relatedTests) {
+          expect(relatedTests).toEqual([
+            dependentTestPath1,
+            dependentTestPath2
+          ]);
+        });
     });
 
     pit('flattens circular dependencies', function() {
@@ -159,9 +183,10 @@ describe('TestRunner', function() {
       // Mock out existsSync to return true, since our test path isn't real
       fs.existsSync = function() { return true; };
 
-      return runner.findTestsRelatedTo([path]).then(function(relatedTests) {
-        expect(relatedTests).toEqual([dependentTestPath]);
-      });
+      return pathStreamToPromise(runner.streamTestPathsRelatedTo([path]))
+        .then(function(relatedTests) {
+          expect(relatedTests).toEqual([dependentTestPath]);
+        });
     });
 
     pit('filters test paths that don\'t exist on the filesystem', function() {
@@ -175,9 +200,10 @@ describe('TestRunner', function() {
         return path !== nonExistantTestPath;
       };
 
-      return runner.findTestsRelatedTo([path]).then(function(relatedTests) {
-        expect(relatedTests).toEqual([existingTestPath]);
-      });
+      return pathStreamToPromise(runner.streamTestPathsRelatedTo([path]))
+        .then(function(relatedTests) {
+          expect(relatedTests).toEqual([existingTestPath]);
+        });
     });
   });
 });
