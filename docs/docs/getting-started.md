@@ -9,8 +9,8 @@ redirect_from: "docs/index.html"
 
 The easiest way to start hacking on React is using the following JSFiddle Hello World examples:
 
- * **[React JSFiddle](http://jsfiddle.net/vjeux/kb3gN/)**
- * [React JSFiddle without JSX](http://jsfiddle.net/vjeux/VkebS/)
+ * **[React JSFiddle](http://jsfiddle.net/reactjs/69z2wepo/)**
+ * [React JSFiddle without JSX](http://jsfiddle.net/reactjs/5vjqabv3/)
 
 ## Starter Kit
 
@@ -110,4 +110,8 @@ If you want to use React with [browserify](http://browserify.org/), [webpack](ht
 
 ## Next Steps
 
-Check out [the tutorial](/react/docs/tutorial.html) and the other examples in the starter kit's `examples` directory to learn more. Good luck, and welcome!
+Check out [the tutorial](/react/docs/tutorial.html) and the other examples in the starter kit's `examples` directory to learn more. 
+
+We also have a wiki where the community contributes with [workflows, UI-components, routing, data management etc.](https://github.com/facebook/react/wiki/Complementary-Tools)
+
+Good luck, and welcome!

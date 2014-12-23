@@ -210,7 +210,9 @@ describe('rendering React components at document', function() {
       'are impure. React cannot handle this case due to cross-browser ' +
       'quirks by rendering at the document root. You should look for ' +
       'environment dependent code in your components and ensure ' +
-      'the props are the same client and server side.'
+      'the props are the same client and server side:\n' +
+      ' (client) data-reactid=".0.1">Hello world</body></\n' +
+      ' (server) data-reactid=".0.1">Goodbye world</body>'
     );
   });
 
@@ -240,7 +242,7 @@ describe('rendering React components at document', function() {
       'Invariant Violation: You\'re trying to render a component to the ' +
       'document but you didn\'t use server rendering. We can\'t do this ' +
       'without using server rendering due to cross-browser quirks. See ' +
-      'renderComponentToString() for server rendering.'
+      'React.renderToString() for server rendering.'
     );
   });
 

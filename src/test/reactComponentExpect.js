@@ -18,7 +18,7 @@ var ReactTestUtils = require('ReactTestUtils');
 var assign = require('Object.assign');
 
 function reactComponentExpect(instance) {
-  if (instance instanceof reactComponentExpect) {
+  if (instance instanceof reactComponentExpectInternal) {
     return instance;
   }
 
@@ -139,9 +139,10 @@ assign(reactComponentExpectInternal.prototype, {
     return this;
   },
 
-  toBeTextComponent: function() {
+  toBeTextComponentWithValue: function(val) {
     var elementType = typeof this._instance._currentElement;
     expect(elementType === 'string' || elementType === 'number').toBe(true);
+    expect(this._instance._stringText).toBe(val);
     return this;
   },
 

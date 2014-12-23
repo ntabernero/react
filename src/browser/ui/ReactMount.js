@@ -24,7 +24,6 @@ var ReactUpdates = require('ReactUpdates');
 
 var emptyObject = require('emptyObject');
 var containsNode = require('containsNode');
-var deprecated = require('deprecated');
 var getReactRootElementInContainer = require('getReactRootElementInContainer');
 var instantiateReactComponent = require('instantiateReactComponent');
 var invariant = require('invariant');
@@ -53,6 +52,22 @@ if (__DEV__) {
 
 // Used to store breadth-first search state in findComponentRoot.
 var findComponentRootReusableArray = [];
+
+/**
+ * Finds the index of the first character
+ * that's not common between the two given strings.
+ *
+ * @return {number} the index of the character where the strings diverge
+ */
+function firstDifferenceIndex(string1, string2) {
+  var minLen = Math.min(string1.length, string2.length);
+  for (var i = 0; i < minLen; i++) {
+    if (string1.charAt(i) !== string2.charAt(i)) {
+      return i;
+    }
+  }
+  return string1.length === string2.length ? -1 : minLen;
+}
 
 /**
  * @param {DOMElement} container DOM element that may contain a React component.
@@ -267,16 +282,16 @@ var ReactMount = {
   /**
    * Take a component that's already mounted into the DOM and replace its props
    * @param {ReactComponent} prevComponent component instance already in the DOM
-   * @param {ReactComponent} nextComponent component instance to render
+   * @param {ReactElement} nextElement component instance to render
    * @param {DOMElement} container container to render into
    * @param {?function} callback function triggered on completion
    */
   _updateRootComponent: function(
       prevComponent,
-      nextComponent,
+      nextElement,
       container,
       callback) {
-    var nextProps = nextComponent.props;
+    var nextProps = nextElement.props;
     ReactMount.scrollMonitor(container, function() {
       prevComponent.replaceProps(nextProps, callback);
     });
@@ -377,7 +392,7 @@ var ReactMount = {
   render: function(nextElement, container, callback) {
     invariant(
       ReactElement.isValidElement(nextElement),
-      'renderComponent(): Invalid component element.%s',
+      'React.render(): Invalid component element.%s',
       (
         typeof nextElement === 'string' ?
           ' Instead of passing an element string, make sure to instantiate ' +
@@ -719,11 +734,26 @@ var ReactMount = {
     );
 
     if (shouldReuseMarkup) {
-      if (ReactMarkupChecksum.canReuseMarkup(
-        markup,
-        getReactRootElementInContainer(container))) {
+      var rootElement = getReactRootElementInContainer(container);
+      if (ReactMarkupChecksum.canReuseMarkup(markup, rootElement)) {
         return;
       } else {
+        var checksum = rootElement.getAttribute(
+          ReactMarkupChecksum.CHECKSUM_ATTR_NAME
+        );
+        rootElement.removeAttribute(ReactMarkupChecksum.CHECKSUM_ATTR_NAME);
+
+        var rootMarkup = rootElement.outerHTML;
+        rootElement.setAttribute(
+          ReactMarkupChecksum.CHECKSUM_ATTR_NAME,
+          checksum
+        );
+
+        var diffIndex = firstDifferenceIndex(markup, rootMarkup);
+        var difference = ' (client) ' +
+          markup.substring(diffIndex - 20, diffIndex + 20) +
+          '\n (server) ' + rootMarkup.substring(diffIndex - 20, diffIndex + 20);
+
         invariant(
           container.nodeType !== DOC_NODE_TYPE,
           'You\'re trying to render a component to the document using ' +
@@ -733,7 +763,8 @@ var ReactMount = {
           'methods are impure. React cannot handle this case due to ' +
           'cross-browser quirks by rendering at the document root. You ' +
           'should look for environment dependent code in your components ' +
-          'and ensure the props are the same client and server side.'
+          'and ensure the props are the same client and server side:\n%s',
+          difference
         );
 
         if (__DEV__) {
@@ -745,7 +776,7 @@ var ReactMount = {
             'new markup to compensate which works but you have lost many ' +
             'of the benefits of server rendering. Instead, figure out ' +
             'why the markup being generated is different on the client ' +
-            'or server.'
+            'or server:\n' + difference
           );
         }
       }
@@ -756,7 +787,7 @@ var ReactMount = {
       'You\'re trying to render a component to the document but ' +
         'you didn\'t use server rendering. We can\'t do this ' +
         'without using server rendering due to cross-browser quirks. ' +
-        'See renderComponentToString() for server rendering.'
+        'See React.renderToString() for server rendering.'
     );
 
     setInnerHTML(container, markup);
@@ -783,14 +814,5 @@ ReactPerf.measureMethods(ReactMount, 'ReactMount', {
   _renderNewRootComponent: '_renderNewRootComponent',
   _mountImageIntoNode: '_mountImageIntoNode'
 });
-
-// Deprecations (remove for 0.13)
-ReactMount.renderComponent = deprecated(
-  'ReactMount',
-  'renderComponent',
-  'render',
-  this,
-  ReactMount.render
-);
 
 module.exports = ReactMount;

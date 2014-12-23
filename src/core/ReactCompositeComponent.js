@@ -21,12 +21,10 @@ var ReactPerf = require('ReactPerf');
 var ReactPropTypeLocations = require('ReactPropTypeLocations');
 var ReactUpdates = require('ReactUpdates');
 
-var emptyObject = require('emptyObject');
 var assign = require('Object.assign');
 var emptyObject = require('emptyObject');
 var invariant = require('invariant');
 var keyMirror = require('keyMirror');
-var monitorCodeUse = require('monitorCodeUse');
 var shouldUpdateReactComponent = require('shouldUpdateReactComponent');
 var warning = require('warning');
 
@@ -34,8 +32,9 @@ function getDeclarationErrorAddendum(component) {
   var owner = component._currentElement._owner || null;
   if (owner) {
     var constructor = owner._instance.constructor;
-    if (constructor && constructor.displayName) {
-      return ' Check the render method of `' + constructor.displayName + '`.';
+    var name = constructor && (constructor.displayName || constructor.name);
+    if (name) {
+      return ' Check the render method of `' + name + '`.';
     }
   }
   return '';
@@ -428,7 +427,9 @@ var ReactCompositeComponentMixin = assign({},
   _processContext: function(context) {
     var maskedContext = null;
     var contextTypes = this._instance.constructor.contextTypes;
-    if (!contextTypes) return emptyObject;
+    if (!contextTypes) {
+      return emptyObject;
+    }
     maskedContext = {};
     for (var contextName in contextTypes) {
       maskedContext[contextName] = context[contextName];
@@ -510,14 +511,15 @@ var ReactCompositeComponentMixin = assign({},
   _checkPropTypes: function(propTypes, props, location) {
     // TODO: Stop validating prop types here and only use the element
     // validation.
-    var componentName = this._instance.constructor.displayName;
+    var componentName = this._instance.constructor.displayName ||
+                        this._instance.constructor.name;
     for (var propName in propTypes) {
       if (propTypes.hasOwnProperty(propName)) {
         var error =
           propTypes[propName](props, propName, componentName, location);
         if (error instanceof Error) {
           // We may want to extend this logic for similar errors in
-          // renderComponent calls, so I'm abstracting it away into
+          // React.render calls, so I'm abstracting it away into
           // a function to minimize refactoring in the future
           var addendum = getDeclarationErrorAddendum(this);
           warning(false, error.message + addendum);
@@ -597,18 +599,33 @@ var ReactCompositeComponentMixin = assign({},
    _warnIfContextsDiffer: function(ownerBasedContext, parentBasedContext) {
     var ownerKeys = Object.keys(ownerBasedContext).sort();
     var parentKeys = Object.keys(parentBasedContext).sort();
-    if (ownerKeys.length != parentKeys.length || ownerKeys.toString() != parentKeys.toString()) {
-      var message = ("owner based context (keys: " +
-        Object.keys(ownerBasedContext) + ") does not equal parent based" +
-        " context (keys: "+Object.keys(parentBasedContext)+")" +
-        " while mounting " +
-        (this._instance.constructor.displayName || 'ReactCompositeComponent'));
-      console.warn(message);
-      monitorCodeUse('contexts_differ', {
-        ownerBasedKeys: Object.keys(ownerBasedContext),
-        parentBasedKeys: Object.keys(parentBasedContext),
-        mounting: (this._instance.constructor.displayName || 'ReactCompositeComponent')
-      });
+    var displayName = this._instance.constructor.displayName || 'ReactCompositeComponent';
+    if (ownerKeys.length !== parentKeys.length ||
+        ownerKeys.toString() !== parentKeys.toString()) {
+      warning(
+        ownerKeys.length === parentKeys.length &&
+        ownerKeys.toString() === parentKeys.toString(),
+        'owner based context (keys: %s) does not equal parent based ' +
+        'context (keys: %s) while mounting %s ' +
+        '(see: http://fb.me/react-context-by-parent)',
+        Object.keys(ownerBasedContext),
+        Object.keys(parentBasedContext),
+        displayName
+      );
+    } else {
+      for (var i = 0; i < parentKeys.length; i++) {
+        var key = parentKeys[i];
+        warning(
+          ownerBasedContext[key] === parentBasedContext[key],
+          'owner-based and parent-based contexts differ '  +
+          '(values: `%s` vs `%s`) for key (%s) while mounting %s ' +
+          '(see: http://fb.me/react-context-by-parent)',
+          ownerBasedContext[key],
+          parentBasedContext[key],
+          key,
+          displayName
+        );
+      }
     }
   },
 
@@ -864,7 +881,7 @@ var ReactCompositeComponentMixin = assign({},
 
   /**
    * Get the publicly accessible representation of this component - i.e. what
-   * is exposed by refs and renderComponent. Can be null for stateless
+   * is exposed by refs and returned by React.render. Can be null for stateless
    * components.
    *
    * @return {ReactComponent} the public component instance.

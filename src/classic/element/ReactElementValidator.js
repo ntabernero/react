@@ -24,6 +24,7 @@ var ReactCurrentOwner = require('ReactCurrentOwner');
 
 var getIteratorFn = require('getIteratorFn');
 var monitorCodeUse = require('monitorCodeUse');
+var warning = require('warning');
 
 /**
  * Warn if there's no key explicitly set on dynamic arrays of children or
@@ -41,6 +42,24 @@ var loggedTypeFailures = {};
 var NUMERIC_PROPERTY_REGEX = /^\d+$/;
 
 /**
+ * Gets the instance's name for use in warnings.
+ *
+ * @internal
+ * @return {?string} Display name or undefined
+ */
+function getName(instance) {
+  var publicInstance = instance && instance.getPublicInstance();
+  if (!publicInstance) {
+    return undefined;
+  }
+  var constructor = publicInstance.constructor;
+  if (!constructor) {
+    return undefined;
+  }
+  return constructor.displayName || constructor.name || undefined;
+}
+
+/**
  * Gets the current owner's displayName for use in warnings.
  *
  * @internal
@@ -49,7 +68,7 @@ var NUMERIC_PROPERTY_REGEX = /^\d+$/;
 function getCurrentOwnerDisplayName() {
   var current = ReactCurrentOwner.current;
   return (
-    current && current.getPublicInstance().constructor.displayName || undefined
+    current && getName(current) || undefined
   );
 }
 
@@ -109,7 +128,7 @@ function validatePropertyKey(name, element, parentType) {
  */
 function warnAndMonitorForKeyUse(warningID, message, element, parentType) {
   var ownerName = getCurrentOwnerDisplayName();
-  var parentName = parentType.displayName;
+  var parentName = parentType.displayName || parentType.name;
 
   var useName = ownerName || parentName;
   var memoizer = ownerHasKeyUseWarning[warningID];
@@ -120,7 +139,7 @@ function warnAndMonitorForKeyUse(warningID, message, element, parentType) {
 
   message += ownerName ?
     ` Check the render method of ${ownerName}.` :
-    ` Check the renderComponent call using <${parentName}>.`;
+    ` Check the React.render call using <${parentName}>.`;
 
   // Usually the current owner is the offender, but if it accepts children as a
   // property, it may be the creator of the child that's responsible for
@@ -130,8 +149,7 @@ function warnAndMonitorForKeyUse(warningID, message, element, parentType) {
       element._owner &&
       element._owner !== ReactCurrentOwner.current) {
     // Name of the component that originally created this child.
-    childOwnerName =
-      element._owner.getPublicInstance().constructor.displayName;
+    childOwnerName = getName(element._owner);
 
     message += ` It was passed a child from ${childOwnerName}.`;
   }
@@ -239,6 +257,15 @@ function checkPropTypes(componentName, propTypes, props, location) {
 var ReactElementValidator = {
 
   createElement: function(type, props, children) {
+    // We warn in this case but don't throw. We expect the element creation to
+    // succeed and there will likely be errors in render.
+    warning(
+      type != null,
+      'React.createElement: type should not be null or undefined. It should ' +
+        'be a string (for DOM elements) or a ReactClass (for composite ' +
+        'components).'
+    );
+
     var element = ReactElement.createElement.apply(this, arguments);
 
     // The result can be nullish if a mock or a custom function is used.
@@ -251,22 +278,24 @@ var ReactElementValidator = {
       validateChildKeys(arguments[i], type);
     }
 
-    var name = type.displayName;
-    if (type.propTypes) {
-      checkPropTypes(
-        name,
-        type.propTypes,
-        element.props,
-        ReactPropTypeLocations.prop
-      );
-    }
-    if (type.contextTypes) {
-      checkPropTypes(
-        name,
-        type.contextTypes,
-        element._context,
-        ReactPropTypeLocations.context
-      );
+    if (type) {
+      var name = type.displayName || type.name;
+      if (type.propTypes) {
+        checkPropTypes(
+          name,
+          type.propTypes,
+          element.props,
+          ReactPropTypeLocations.prop
+        );
+      }
+      if (type.contextTypes) {
+        checkPropTypes(
+          name,
+          type.contextTypes,
+          element._context,
+          ReactPropTypeLocations.context
+        );
+      }
     }
     return element;
   },

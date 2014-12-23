@@ -9,6 +9,8 @@
  * @providesModule React
  */
 
+/* globals __REACT_DEVTOOLS_GLOBAL_HOOK__*/
+
 "use strict";
 
 var DOMPropertyOperations = require('DOMPropertyOperations');
@@ -33,7 +35,7 @@ var ReactRef = require('ReactRef');
 var ReactServerRendering = require('ReactServerRendering');
 
 var assign = require('Object.assign');
-var deprecated = require('deprecated');
+var findDOMNode = require('findDOMNode');
 var onlyChild = require('onlyChild');
 
 ReactDefaultInjection.inject();
@@ -68,6 +70,7 @@ var React = {
   },
   constructAndRenderComponent: ReactMount.constructAndRenderComponent,
   constructAndRenderComponentByID: ReactMount.constructAndRenderComponentByID,
+  findDOMNode: findDOMNode,
   render: render,
   renderToString: ReactServerRendering.renderToString,
   renderToStaticMarkup: ReactServerRendering.renderToStaticMarkup,
@@ -76,37 +79,7 @@ var React = {
   withContext: ReactContext.withContext,
 
   // Hook for JSX spread, don't use this for anything else.
-  __spread: assign,
-
-  // Deprecations (remove for 0.13)
-  renderComponent: deprecated(
-    'React',
-    'renderComponent',
-    'render',
-    this,
-    render
-  ),
-  renderComponentToString: deprecated(
-    'React',
-    'renderComponentToString',
-    'renderToString',
-    this,
-    ReactServerRendering.renderToString
-  ),
-  renderComponentToStaticMarkup: deprecated(
-    'React',
-    'renderComponentToStaticMarkup',
-    'renderToStaticMarkup',
-    this,
-    ReactServerRendering.renderToStaticMarkup
-  ),
-  isValidComponent: deprecated(
-    'React',
-    'isValidComponent',
-    'isValidElement',
-    this,
-    ReactElement.isValidElement
-  )
+  __spread: assign
 };
 
 // Inject the runtime into a devtools global hook regardless of browser.

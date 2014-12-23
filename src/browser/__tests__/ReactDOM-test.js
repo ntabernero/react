@@ -14,7 +14,6 @@
 "use strict";
 
 var React = require('React');
-var ReactDOM = require('ReactDOM');
 var ReactTestUtils = require('ReactTestUtils');
 var div = React.createFactory('div');
 
@@ -47,6 +46,12 @@ describe('ReactDOM', function() {
     expect(count).toEqual(1);
   });
   */
+
+  it("allows a DOM element to be used with a string", function() {
+    var element = React.createElement('div', { className: 'foo' });
+    var instance = ReactTestUtils.renderIntoDocument(element);
+    expect(instance.getDOMNode().tagName).toBe('DIV');
+  });
 
   it("should allow children to be passed as an argument", function() {
     var argDiv = ReactTestUtils.renderIntoDocument(

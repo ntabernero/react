@@ -25,7 +25,6 @@ var ReactUpdates = require('ReactUpdates');
 var SyntheticEvent = require('SyntheticEvent');
 
 var assign = require('Object.assign');
-var instantiateReactComponent = require('instantiateReactComponent');
 
 var topLevelTypes = EventConstants.topLevelTypes;
 
@@ -125,6 +124,9 @@ var ReactTestUtils = {
         if (!renderedChildren.hasOwnProperty(key)) {
           continue;
         }
+        if (!renderedChildren[key].getPublicInstance) {
+          continue;
+        }
         ret = ret.concat(
           ReactTestUtils.findAllInRenderedTree(
             renderedChildren[key].getPublicInstance(),
@@ -168,7 +170,9 @@ var ReactTestUtils = {
     var all =
       ReactTestUtils.scryRenderedDOMComponentsWithClass(root, className);
     if (all.length !== 1) {
-      throw new Error('Did not find exactly one match for class:' + className);
+      throw new Error('Did not find exactly one match '+
+        '(found: ' + all.length + ') for class:' + className
+      );
     }
     return all[0];
   },
@@ -322,7 +326,7 @@ ReactShallowRenderer.prototype.getRenderOutput = function() {
 
 var ShallowComponentWrapper = function(inst) {
   this._instance = inst;
-}
+};
 assign(
   ShallowComponentWrapper.prototype,
   ReactCompositeComponent.ShallowMixin

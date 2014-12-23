@@ -641,7 +641,7 @@ describe('ReactUpdates', function() {
       componentDidMount: function() {
         instances.push(this);
         if (this.props.depth < this.props.count) {
-          React.renderComponent(
+          React.render(
             <MockComponent
               depth={this.props.depth + 1}
               count={this.props.count}
@@ -798,8 +798,7 @@ describe('ReactUpdates', function() {
       }
     });
 
-    var container = document.createElement('div');
-    var component = React.render(<A />, container);
+    var component = ReactTestUtils.renderIntoDocument(<A />);
     component.forceUpdate();
     expect(callbackCount).toBe(2);
   });
@@ -832,8 +831,7 @@ describe('ReactUpdates', function() {
       }
     });
 
-    var container = document.createElement('div');
-    var component = React.render(<A />, container);
+    var component = ReactTestUtils.renderIntoDocument(<A />);
     component.setState({updates: 1});
     expect(log).toEqual([
       'render-0',
@@ -880,9 +878,7 @@ describe('ReactUpdates', function() {
       }
     });
 
-    var container = document.createElement('div');
-
-    var component = React.render(<A />, container);
+    var component = ReactTestUtils.renderIntoDocument(<A />);
 
     ReactUpdates.batchedUpdates(function() {
       // B will have scheduled an update but the batching should ensure that its
